@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "commander": "^3.0.1",
-    "wow-log-parser": "^0.1.0"
+    "ansi-256-colors": "^1.1.0",
+    "commander": "^3.0.1"
   }
 }
