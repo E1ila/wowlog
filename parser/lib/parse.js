@@ -99,7 +99,7 @@ parse.line = (line, version) => {
    if (o.target.name === undefined) o.target = undefined
 
    if (o.event === 'SPELL_ABSORBED') {
-      if (l.length > 9)
+      if (l.length >= 12)
          o.absorbedSpell = extractSpell(l);
       o.sourceOfAbsorb = extractPlayer(l);
    }
@@ -135,26 +135,31 @@ parse.line = (line, version) => {
 
    switch (o.eventSuffix) {
       case 'DAMAGE':
-         o.amount = parseInt(l.mshift(16)) // the damage player will see on his UI
+      case 'DAMAGE_LANDED':
+         o.perspective = extractPerspective(l);
+         o.amount = parseInt(l.shift()) // the damage player will see on his UI
          o.baseAmount = parseInt(l.shift()) // damage before crit and before absorbtion
          o.overkill = parseInt(l.shift()) // wasted damage points, -1 = no overkill
-         o.school = parseInt(l.shift()) // 1 = melee, 16 = spell ?
-         o.resisted = parseInt(l.shift()) // ?
-         l.shift() // ??
-         o.absorbed = parseInt(l.shift())
-         o.critical = parseInt(l.shift()) // 1 for crit
+         o.school = parseInt(l.shift()); // 1 = melee, 16 = spell
+         o.resisted = parseInt(l.shift());
+         o.blocked = parseInt(l.shift());
+         o.absorbed = parseInt(l.shift());
+         o.critical = l.shift() === '1';
+         o.glancing = l.shift() === '1';
+         o.crushing = l.shift() === '1';
          break
      case 'MISSED':
          o.missType = l.shift() // MISS / ABSORBED
-         o.isOffhand = l.shift() // ?
-         o.amount = parseInt(l.shift()) // how much was absorbed
+         o.isOffhand = l.shift() === '1'
+         o.amount = parseInt(l.shift()) // how much was absorbed / missed
          o.baseAmount = parseInt(l.shift()) // intended damage, before crit mul, before reductions and absorbtion
          break
       case 'HEAL':
-         o.amount = parseInt(l.shift()) // ?
-         o.overheal = parseInt(l.shift()) // ?
-         o.absorbed = parseInt(l.shift()) // ?
-         o.critical = parseInt(l.shift()) // ?
+         o.amount = parseInt(l.mshift(16)) // the damage player will see on his UI
+         o.baseAmount = parseInt(l.shift()) // damage before crit and before absorbtion
+         o.overheal = l.shift() === '1'
+         o.absorbed = l.shift() === '1'
+         o.critical = l.shift() === '1'
          break
       case 'ENERGIZE':
          o.amount = parseInt(l.shift()) // ?
@@ -187,7 +192,7 @@ parse.line = (line, version) => {
       case 'AURA_REMOVED_DOSE':
       case 'AURA_REFRESH':
          o.auraType = l.shift().replace(/"/g, '') // ?
-         o.amount = parseInt(l.shift()) // ?
+         // o.amount = parseInt(l.shift()) // ?
          break
       case 'AURA_BROKEN':
          o.auraType = l.shift().replace(/"/g, '') // ?
@@ -231,6 +236,27 @@ function extractSpell(l) {
       "id": parseInt(l.shift()),
       "name": l.shift().replace(/"/g, ''),
       "school": parse.school(parseHex(l.shift()))
+   }
+}
+
+function extractPerspective(l) {
+   return {
+      "guid": l.shift(),
+      "p1": l.shift(),
+      "p2": parseInt(l.shift()),
+      "p3": parseInt(l.shift()),
+      "p4": parseInt(l.shift()),
+      "p5": parseInt(l.shift()),
+      "p6": parseInt(l.shift()),
+      "p7": parseInt(l.shift()),
+      "p8": parseInt(l.shift()),
+      "p9": parseInt(l.shift()),
+      "p10": parseInt(l.shift()),
+      "p11": parseFloat(l.shift()),
+      "p12": parseFloat(l.shift()),
+      "p13": parseFloat(l.shift()),
+      "p14": parseFloat(l.shift()),
+      "p15": parseInt(l.shift()),
    }
 }
 
