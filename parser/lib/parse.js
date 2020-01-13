@@ -27,7 +27,7 @@ Array.prototype.mshift = function (elementsToSkip) {
    return this.shift();
 }
 
-var parse = {}
+let parse = {}
 
 /**
  * parse spell school
@@ -162,8 +162,9 @@ parse.line = (line, version) => {
          o.critical = l.shift() === '1'
          break
       case 'ENERGIZE':
-         o.amount = parseInt(l.shift()) // ?
-         o.powerType = parse.power(parseHex(l.shift())) // ?
+         o.amount = parseInt(l.mshift(16)) // the damage player will see on his UI
+         o.overflow = parseInt(l.shift()) // the damage player will see on his UI
+         o.powerType = parse.power(l.shift()) // mana / rage / health / etc..
          break
       case 'LEECH':
       case 'DRAIN':
