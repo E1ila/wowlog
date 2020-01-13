@@ -56,7 +56,7 @@ parse.power = (power) => {
       if (power.isNaN) throw new TypeError('power has wrong format.')
    }
    if (power < -2 || power > c.powers.length - 3 || c.powers[power + 2] === '') {
-      throw new TypeError('power #' + power + 'is not valid.')
+      throw new TypeError('power #' + power + 'is not valid');
    }
    return c.powers[power + 2]
 }
@@ -92,8 +92,53 @@ parse.line = (line, version) => {
    l = l[1].split(',')
 
    o.event = l.shift()
-   o.source = extractPlayer(l);
-   o.target = extractPlayer(l);
+   if (o.event === 'ENCOUNTER_START' || o.event === 'ENCOUNTER_END') {
+      o.encounterId = l.shift(); // https://wow.gamepedia.com/DungeonEncounterID
+      o.encounterName = l.shift().replace(/"/g, '');
+      o.difficultyID = c.difficultyIDs[l.shift()];
+      o.groupSize = parseInt(l.shift());
+      return o;
+   }
+
+  if (o.event === 'COMBATANT_INFO') {
+     // COMBATANT_INFO,playerGUID,Strength,Agility,Stamina,Intelligence,Spirit,Dodge,Parry,Block,CritMelee,CritRanged,CritSpell,Speed,Lifesteal,HasteMelee,HasteRanged,HasteSpell,Avoidance,Mastery,VersatilityDamageDone,VersatilityHealingDone,VersatilityDamageTaken,Armor,CurrentSpecID,(Class Talent 1, ...),(PvP Talent 1, ...),[Artifact Trait ID 1, Trait Effective Level 1, ...],[(Equipped Item ID 1,Equipped Item iLvL 1,(Permanent Enchant ID, Temp Enchant ID, On Use Spell Enchant ID),(Bonus List ID 1, ...),(Gem ID 1, Gem iLvL 1, ...)) ...],[Interesting Aura Caster GUID 1, Interesting Aura Spell ID 1, ...]
+     o.playerGuid = l.shift();
+     o.playerStats = {
+        str: parseInt(l.shift()),
+        agi: parseInt(l.shift()),
+        sta: parseInt(l.shift()),
+        int: parseInt(l.shift()),
+        spi: parseInt(l.shift()),
+        dodge: parseInt(l.shift()),
+        parry: parseInt(l.shift()),
+        block: parseInt(l.shift()),
+        critMelee: parseInt(l.shift()),
+        critRanged: parseInt(l.shift()),
+        critSpell: parseInt(l.shift()),
+        speed: parseInt(l.shift()),
+        lifesteal: parseInt(l.shift()),
+        hasteMelee: parseInt(l.shift()),
+        hasteRanged: parseInt(l.shift()),
+        hasteSpell: parseInt(l.shift()),
+        avoidance: parseInt(l.shift()),
+        mastery: parseInt(l.shift()),
+        versatilityDamageDone: parseInt(l.shift()),
+        versatilityHealingDone: parseInt(l.shift()),
+        versatilityDamageTaken: parseInt(l.shift()),
+        armor: parseInt(l.shift()),
+        currentSpecID: parseInt(l.shift()),
+     }
+     let arr = JSON.parse(`[${l.join(',').replace(/\(/g, "[").replace(/\)/g, "]")}]`);
+     o.playerEquippedGear = arr[3].filter(g => g[0]).map(g => ({itemId: g[0], iLvl: g[1], permEnchant: g[2], tempEnchant: g[3], onUseSpellEnchantId: g[4]}));
+     return o;
+  }
+
+   try {
+      o.source = extractPlayer(l);
+      o.target = extractPlayer(l);
+   } catch (e) {
+      console.error(e.stack);
+   }
 
    //sometimes events do not have targets. remove target property.
    if (o.target.name === undefined) o.target = undefined
@@ -119,7 +164,7 @@ parse.line = (line, version) => {
       case 'UNIT_DIED':
       case 'UNIT_DESTROYED':
       case 'UNIT_DISSIPATES':
-         return o
+         return o;
          break
       default:
          break
@@ -167,23 +212,26 @@ parse.line = (line, version) => {
          o.powerType = parse.power(l.shift()) // mana / rage / health / etc..
          break
       case 'LEECH':
-      case 'DRAIN':
-         o.amount = parseInt(l.shift()) // ?
-         o.powerType = parse.power(parseHex(l.shift())) // ?
-         o.extraAmount = parseInt(l.shift()) // ?
-         break
+      case 'DRAIN': // need to verify
+         o.amount = parseInt(l.mshift(16));
+         o.overflow = parseInt(l.shift());
+         o.powerType = parse.power(l.shift());
+         o.extraAmount = parseInt(l.shift());
+         break;
       case 'INTERRUPT':
       case 'DISPEL_FAILED':
-         o.extraSpellId = parseInt(l.shift()) // ?
-         o.extraSpellName = l.shift().replace(/"/g, '') // ?
-         o.extraSchool = parse.school(parseHex(l.shift())) // ?
+         o.extraSpellId = parseInt(l.shift());
+         o.extraSpellName = l.shift().replace(/"/g, '');
+         o.extraSchool = parse.school(l.shift());
+         break;
       case 'DISPEL':
       case 'STOLEN':
       case 'AURA_BROKEN_SPELL':
          o.extraSpellId = parseInt(l.shift()) // ?
          o.extraSpellName = l.shift().replace(/"/g, '') // ?
-         o.extraSchool = parse.school(parseHex(l.shift())) // ?
+         o.extraSchool = parse.school(l.shift())
          o.auraType = l.shift().replace(/"/g, '') // ?
+         break
       case 'EXTRA_ATTACKS':
          o.amount = parseInt(l.shift()) // number of extra attacks
          break
@@ -196,8 +244,8 @@ parse.line = (line, version) => {
          // o.amount = parseInt(l.shift()) // ?
          break
       case 'AURA_BROKEN':
-         o.auraType = l.shift().replace(/"/g, '') // ?
-         break
+         o.auraType = l.shift().replace(/"/g, '');
+         break;
       case 'CAST_FAILED':
          o.failedType = l.shift().replace(/"/g, '') // ?
          break
@@ -208,19 +256,42 @@ parse.line = (line, version) => {
 
       case 'CAST_START':
       case 'CAST_SUCCESS':
-      case 'INSTAKILL':
-      case 'DURABILITY_DAMAGE':
-      case 'DURABILITY_DAMAGE_ALL':
-      case 'CREATE':
       case 'SUMMON':
+      case 'INSTAKILL':
       case 'RESURRECT':
-         break
+      case 'CREATE':
+         break;
+
+      case 'SHIELD':
+         // DAMAGE_SHIELD
+         o.spellId = parseInt(l.shift());
+         o.spellName = l.shift().replace(/"/g, '');
+         o.school = parse.school(parseHex(l.shift()));
+         o.amount = parseInt(l.mshift(16));
+         // damage type? melee / spell
+         break;
+
+      case 'SHIELD_MISSED':
+         // DAMAGE_SHIELD_MISSED
+         o.spellId = parseInt(l.shift());
+         o.spellName = l.shift().replace(/"/g, '');
+         o.school = parse.school(parseHex(l.shift()));
+         o.failedType = l.shift();
+         break;
+
+      case 'DURABILITY_DAMAGE':
+         o.itemId = parseInt(l.shift());
+         o.itemName = l.shift().replace(/"/g, '');
+         break;
+
+      case 'DURABILITY_DAMAGE_ALL':
+
       default:
          throw new Error('unrecognized event suffix ' + o.eventSuffix)
          break
    }
 
-   return o
+   return o;
 }
 
 function extractPlayer(l) {
