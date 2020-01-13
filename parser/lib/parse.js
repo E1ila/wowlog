@@ -185,7 +185,7 @@ parse.line = (line, version) => {
          o.extraSchool = parse.school(parseHex(l.shift())) // ?
          o.auraType = l.shift().replace(/"/g, '') // ?
       case 'EXTRA_ATTACKS':
-         o.amount = parseInt(l.shift()) // ?
+         o.amount = parseInt(l.shift()) // number of extra attacks
          break
       case 'AURA_APPLIED':
       case 'AURA_REMOVED':
