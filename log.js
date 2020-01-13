@@ -14,7 +14,7 @@ module.exports = class Log {
    }
 
    process() {
-      return new Promise((resolve) => {
+      return new Promise((resolve, reject) => {
          let versionData = {version: 0, advanced: 0, build: null, projectId: 0};
          let lineNumber = 0;
 
@@ -42,7 +42,7 @@ module.exports = class Log {
                   if (e.message.indexOf('Unsupported version:') !== -1) {
                      if (!this.options['ignoreVerErr'])
                         console.error(e.message);
-                     return resolve();
+                     return reject('Unsupported combat log version');
                   } else {
                      console.error(line);
                      console.error(`Failed parsing line #${lineNumber}: ${e.stack}`);
@@ -60,12 +60,16 @@ module.exports = class Log {
          });
 
          readInterface.on('close', line => {
+            this.finish();
             resolve();
          });
       });
    }
 
    processEvent(lineNumber, event) {
+      if (event.event === 'ENCOUNTER_START')
+         this.report.encounters[event.encounterName] = (this.report.encounters[event.encounterName] || 0) + 1;
+
       if (this.options['filter']) {
          if (this.options['filter'].indexOf(event.event) === -1)
             return;
@@ -74,12 +78,7 @@ module.exports = class Log {
          console.log(`#${lineNumber} EVENT ` + JSON.stringify(event));
 
       if (this.customFunc)
-         this.customFunc(this, this.options, lineNumber, event);
-
-      // for (let field of this.options['sum']) {
-      //    if (field === consts.fields.damage) {
-      //    }
-      // }
+         this.customFunc.processEvent(this, this.options, lineNumber, event);
    }
 
    initResult() {
@@ -95,5 +94,10 @@ module.exports = class Log {
    ensureEntry(obj, name, defaultValue) {
       if (obj[name] === undefined)
          obj[name] = defaultValue;
+   }
+
+   finish() {
+      if (this.customFunc)
+         this.customFunc.finishFile(this, this.options);
    }
 }

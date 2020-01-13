@@ -3,6 +3,7 @@
 const
    program = require('commander'),
    consts = require('./consts'),
+   moment = require('moment'),
    fs = require('fs'),
    path = require('path'),
    Log = require('./log');
@@ -11,11 +12,13 @@ function collect(value, previous) {
    return previous.concat([value]);
 }
 
-async function processFile(filename, options, report) {
+async function processFile(filename, options, report, func) {
    console.log(`====| Processing file ${filename}`);
-   const func = options['func'] && require('./funcs/' + options['func']);
+   report.files++;
    const log = new Log(filename, options, report, func);
-   await log.process();
+   await log.process().catch(e => {
+      report.files--;
+   });
 }
 
 program
@@ -28,16 +31,32 @@ program
    .option('--sum <field>', 'Aggregate one of: ' + Object.values(consts.fields).join(', '), collect, [])
    .option('--ext <extension>', 'Process only files with this extension')
    .action(async (logPath, options) => {
-      const report = {};
+      const report = {
+         files: 0,
+         startTime: new Date(),
+         encounters: {},
+      };
+      const func = options['func'] && require('./funcs/' + options['func']);
       if (fs.lstatSync(logPath).isDirectory()) {
          const files = fs.readdirSync(logPath);
          for (let file of files) {
             if (options['ext'] && !file.endsWith('.' + options['ext']))
                continue;
-            await processFile(path.join(logPath, file), options, report);
+            await processFile(path.join(logPath, file), options, report, func);
          }
       } else
-         await processFile(logPath, options, report);
+         await processFile(logPath, options, report, func);
+
+      const took = moment().diff(moment(report.startTime), 'seconds');
+      const encounters = Object.keys(report.encounters).map(key => [key, report.encounters[key]]).sort((a, b) => b[1] - a[1]);
+
+      console.log(`\n===================================================`);
+      console.log(` Finished processing ${report.files} files, took ${took} seconds`);
+      console.log(` Encounters:`);
+      console.log(encounters.map(row => `    • ${row[1]} ${row[0]}`).join("\n"));
+      console.log(`===================================================\n`);
+
+      func.finishReport(report, options);
    });
 
 program.parse(process.argv);
