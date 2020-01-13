@@ -64,15 +64,18 @@ parse.power = (power) => {
 parse.date = (d) => {
    let date = new Date()
    // including a date library for this would be overkill. works.
-   d = d.split(' ')
-   date.setMonth(d[0].split('/')[0] - 1)
-   date.setDate(d[0].split('/')[1])
-   date.setHours(d[1].split(':')[0])
-   date.setMinutes(d[1].split(':')[1])
-   date.setSeconds(d[1].split(':')[2].split('.')[0])
-   date.setMilliseconds(d[1].split(':')[2].split('.')[1])
-
-   return date
+   try {
+      d = d.split(' ')
+      date.setMonth(d[0].split('/')[0] - 1)
+      date.setDate(d[0].split('/')[1])
+      date.setHours(d[1].split(':')[0])
+      date.setMinutes(d[1].split(':')[1])
+      date.setSeconds(d[1].split(':')[2].split('.')[0])
+      date.setMilliseconds(d[1].split(':')[2].split('.')[1])
+      return date
+   } catch (e) {
+      throw new Error(`Failed parsing date "${d}": ${e.stack}`);
+   }
 }
 
 /**
@@ -241,6 +244,7 @@ parse.line = (line, version) => {
       case 'AURA_REMOVED_DOSE':
       case 'AURA_REFRESH':
          o.auraType = l.shift().replace(/"/g, '') // ?
+         o.moreData = true;
          // o.amount = parseInt(l.shift()) // ?
          break
       case 'AURA_BROKEN':
@@ -253,7 +257,6 @@ parse.line = (line, version) => {
          o.amount = parseInt(l.shift()) // how much was absorbed
          o.baseAmount = parseInt(l.shift()) // intended damage, before reductions
          break
-
       case 'CAST_START':
       case 'CAST_SUCCESS':
       case 'SUMMON':
@@ -261,7 +264,6 @@ parse.line = (line, version) => {
       case 'RESURRECT':
       case 'CREATE':
          break;
-
       case 'SHIELD':
          // DAMAGE_SHIELD
          o.spellId = parseInt(l.shift());
@@ -270,7 +272,6 @@ parse.line = (line, version) => {
          o.amount = parseInt(l.mshift(16));
          // damage type? melee / spell
          break;
-
       case 'SHIELD_MISSED':
          // DAMAGE_SHIELD_MISSED
          o.spellId = parseInt(l.shift());
@@ -278,14 +279,18 @@ parse.line = (line, version) => {
          o.school = parse.school(parseHex(l.shift()));
          o.failedType = l.shift();
          break;
-
       case 'DURABILITY_DAMAGE':
          o.itemId = parseInt(l.shift());
          o.itemName = l.shift().replace(/"/g, '');
          break;
-
+      case 'SPLIT':
+         o.spellId = parseInt(l.shift());
+         o.spellName = l.shift().replace(/"/g, '');
+         o.school = parse.school(parseHex(l.shift()));
+         o.moreData = true;
+         // todo: need to parse the rest
+         break;
       case 'DURABILITY_DAMAGE_ALL':
-
       default:
          throw new Error('unrecognized event suffix ' + o.eventSuffix)
          break

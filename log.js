@@ -5,9 +5,10 @@ const consts = require('./consts');
 
 module.exports = class Log {
 
-   constructor(filename, options) {
+   constructor(filename, options, customFunc) {
       this.filename = filename;
       this.options = options;
+      this.customFunc = customFunc;
       this.initResult();
    }
 
@@ -37,8 +38,14 @@ module.exports = class Log {
                try {
                   event = parser.line(line, versionData.version);
                } catch (e) {
-                  console.error(line);
-                  console.error(`Failed parsing line #${lineNumber}: ${e.stack}`);
+                  if (e.message.indexOf('Unsupported version:') !== -1) {
+                     if (!this.options['ignoreVerErr'])
+                        console.error(e.message);
+                     return resolve();
+                  } else {
+                     console.error(line);
+                     console.error(`Failed parsing line #${lineNumber}: ${e.stack}`);
+                  }
                }
                if (event) {
                   try {
@@ -58,8 +65,15 @@ module.exports = class Log {
    }
 
    processEvent(lineNumber, event) {
-      if (this.options['printEvents'])
+      if (this.options['filter']) {
+         if (this.options['filter'].indexOf(event.event) === -1)
+            return;
+      }
+      if (this.options['print'])
          console.log(`#${lineNumber} EVENT ` + JSON.stringify(event));
+
+      if (this.customFunc)
+         this.customFunc(this.options, lineNumber, event);
 
       // for (let field of this.options['sum']) {
       //    if (field === consts.fields.damage) {
