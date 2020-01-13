@@ -135,6 +135,7 @@ module.exports = {
 
    finishReport: function (report, options) {
       // all files finished, print result
+      console.log(`Debuff,Pushed Off By,Number`);
       const debuffs = Object.keys(report.count).map(key => [key, report.count[key]]).sort((a, b) => b[1] - a[1]);
       console.log(debuffs.map(row => `${row[0]},${row[1]}`).join("\n"));
    },
