@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "ansi-256-colors": "^1.1.0",
-    "commander": "^3.0.1"
+    "commander": "^3.0.1",
+    "moment": "^2.24.0"
   }
 }

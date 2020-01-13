@@ -17,7 +17,9 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-const c = require('./constants')
+const
+   c = require('./constants'),
+   moment = require('moment');
 
 const parseHex = (str) => parseInt(str.substring(2), 16)
 
@@ -65,14 +67,10 @@ parse.date = (d) => {
    let date = new Date()
    // including a date library for this would be overkill. works.
    try {
-      d = d.split(' ')
-      date.setMonth(d[0].split('/')[0] - 1)
-      date.setDate(d[0].split('/')[1])
-      date.setHours(d[1].split(':')[0])
-      date.setMinutes(d[1].split(':')[1])
-      date.setSeconds(d[1].split(':')[2].split('.')[0])
-      date.setMilliseconds(d[1].split(':')[2].split('.')[1])
-      return date
+      let m = moment(d, 'MM/DD HH:mm:ss:SSS');
+      if (+m > +new Date())
+         m.subtract(1, 'year');
+      return m.toDate();
    } catch (e) {
       throw new Error(`Failed parsing date "${d}": ${e.stack}`);
    }

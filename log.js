@@ -5,10 +5,11 @@ const consts = require('./consts');
 
 module.exports = class Log {
 
-   constructor(filename, options, customFunc) {
+   constructor(filename, options, report, customFunc) {
       this.filename = filename;
       this.options = options;
       this.customFunc = customFunc;
+      this.report = report;
       this.initResult();
    }
 
@@ -73,7 +74,7 @@ module.exports = class Log {
          console.log(`#${lineNumber} EVENT ` + JSON.stringify(event));
 
       if (this.customFunc)
-         this.customFunc(this.options, lineNumber, event);
+         this.customFunc(this, this.options, lineNumber, event);
 
       // for (let field of this.options['sum']) {
       //    if (field === consts.fields.damage) {
