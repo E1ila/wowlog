@@ -2,6 +2,14 @@
 
 const MAX_DEBUFF_SLOTS = 16;
 
+function indexOfBuff(buffs, buffName) {
+   for (let i = 0 ; i < buffs.length ; i++) {
+      if (buffs[i].name === buffName)
+         return i;
+   }
+   return -1;
+}
+
 /**
  * Finds diff between two arrays
  * @param arr1
@@ -12,7 +20,7 @@ function findDiff(arr1, arr2) {
    let _arr2 = [].concat(arr2);
    const removed = [];
    for (let item of arr1) {
-      let pos2 = _arr2.indexOf(item);
+      let pos2 = indexOfBuff(_arr2, item.name);
       if (pos2 !== -1)
          _arr2.splice(pos2, 1);
       else
@@ -25,13 +33,13 @@ function findDiff(arr1, arr2) {
 function formatDiff(diff) {
    if (!diff)
       return ``;
-   return `added:${JSON.stringify(diff.added)} removed:${JSON.stringify(diff.removed)} pushed:${JSON.stringify(diff.pushed || [])}`
+   return `added:${JSON.stringify(diff.added.map(o => o.name))} removed:${JSON.stringify(diff.removed.map(o => o.name))} pushed:${JSON.stringify((diff.pushed || []).map(o => o.name))}`
 }
 
 function formatPushed(diff) {
    if (!diff)
       return ``;
-   let st = `${diff.added[0]} --->| ${diff.pushed[0]}`
+   let st = `${diff.added[0].name} --->| ${diff.pushed[0].name} ${diff.pushed[0].stacks ? '('+diff.pushed[0].stacks+')' : ''}`
    if (diff.removed.length)
       st += ` !! diff has removed buffs ${JSON.stringify(diff.removed)}`;
    if (diff.added.length > 1)
@@ -60,13 +68,24 @@ module.exports = {
       const mobGuid = event.target.guid;
       if (!mobGuid.startsWith('Creature') || log._pushedBuffs.ignore[mobGuid])
          return;
+
+      const doIfBuffFound = (buffIndex, action) => {
+         if (buffIndex === -1) {
+            console.error(`Couldn't find buff ${event.spell.name} in mob's ${event.target.name} debuffs`);
+            log._pushedBuffs.ignore[mobGuid] = 1;
+         } else
+            action();
+      }
+
       if (!log._pushedBuffs.debuffs[mobGuid]) {
          log._pushedBuffs.debuffs[mobGuid] = [];
          log._pushedBuffs.debuffLog[mobGuid] = [];
          if (!log.report.count)
             log.report.count = {};
       }
+
       const mobBuffs = log._pushedBuffs.debuffs[mobGuid];
+
       if (event.event === 'UNIT_DIED') {
          const pushedBuffs = log._pushedBuffs.debuffLog[mobGuid].filter(row => row.length > 2 && row[row.length - 1] && row[row.length - 1].pushed);
          if (pushedBuffs.length) {
@@ -84,7 +103,7 @@ module.exports = {
 
             for (let row of pushedBuffs) {
                const diff = row[row.length - 1];
-               const pushedDebuff = `${diff.pushed[0]},${diff.added[0]}`;
+               const pushedDebuff = `${diff.pushed[0].name}${diff.pushed[0].stacks ? ' ('+diff.pushed[0].stacks+')' : ''},${diff.added[0].name}`;
                log.report.count[pushedDebuff] = (log.report.count[pushedDebuff] || 0) + 1;
             }
          }
@@ -97,24 +116,33 @@ module.exports = {
          //       console.log('mob died with buffs');
          // }
       } else {
-         const applied = event.event === 'SPELL_AURA_APPLIED';
+         // debuff added / removed
          if (event.auraType !== "DEBUFF")
             return;
-         if (applied) {
-            mobBuffs.push(event.spell.name);
+
+         const buffIndex = indexOfBuff(mobBuffs, event.spell.name);
+         if (event.event.endsWith('_DOSE')) {
+            doIfBuffFound(buffIndex, () => {
+               mobBuffs[buffIndex].stacks = event.stacks;
+            });
+         }
+         else if (event.event === 'SPELL_AURA_APPLIED') {
+            mobBuffs.push({name: event.spell.name, stacks: event.stacks});
             if (mobBuffs.length > MAX_DEBUFF_SLOTS + 1)
                // probably wiped and pulled again
                return log._pushedBuffs.ignore[mobGuid] = 1;
-         } else {
-            const index = mobBuffs.indexOf(event.spell.name);
-            if (index === -1) {
-               console.error(`Couldn't find buff ${event.spell.name} in mob's ${event.target.name} debuffs`);
-               log._pushedBuffs.ignore[mobGuid] = 1;
-            } else
-               mobBuffs.splice(index, 1);
          }
+         else if (event.event === 'SPELL_AURA_REMOVED') {
+            // removed
+            doIfBuffFound(buffIndex, () => {
+               const removedBuff = mobBuffs.splice(buffIndex, 1);
+               if (removedBuff.name === "Winter's Chill")
+                  console.log('123');
+            });
+         }
+
          const mobDeuffLog = log._pushedBuffs.debuffLog[mobGuid];
-         let currBuffs = [''+(+event.date)].concat(mobBuffs);
+         let currBuffs = [event.dateStr].concat(mobBuffs);
          if (mobDeuffLog.length && mobDeuffLog[mobDeuffLog.length - 1].length > 1) {
             const prevBuffs = mobDeuffLog[mobDeuffLog.length - 1];
             const arr1 = prevBuffs.slice(1, prevBuffs.length - 1);

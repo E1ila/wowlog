@@ -89,6 +89,7 @@ parse.line = (line, version) => {
    let o = {}
    let l = line.split('  ')
    o.date = parse.date(l[0])
+   o.dateStr = l[0];
 
    l = l[1].split(',')
 
@@ -238,12 +239,13 @@ parse.line = (line, version) => {
          break
       case 'AURA_APPLIED':
       case 'AURA_REMOVED':
-      case 'AURA_APPLIED_DOSE':
-      case 'AURA_REMOVED_DOSE':
       case 'AURA_REFRESH':
          o.auraType = l.shift().replace(/"/g, '') // ?
-         o.moreData = true;
-         // o.amount = parseInt(l.shift()) // ?
+         break
+      case 'AURA_REMOVED_DOSE':
+      case 'AURA_APPLIED_DOSE':
+         o.auraType = l.shift().replace(/"/g, '') // ?
+         o.stacks = parseInt(l.shift());
          break
       case 'AURA_BROKEN':
          o.auraType = l.shift().replace(/"/g, '');
