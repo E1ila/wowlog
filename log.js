@@ -17,6 +17,7 @@ module.exports = class Log {
       return new Promise((resolve, reject) => {
          let versionData = {version: 0, advanced: 0, build: null, projectId: 0};
          let lineNumber = 0;
+         let lastEvent;
 
          const readInterface = readline.createInterface({
             input: fs.createReadStream(this.filename),
@@ -50,12 +51,13 @@ module.exports = class Log {
                }
                if (event) {
                   try {
-                     this.processEvent(lineNumber, event);
+                     this.processEvent(lineNumber, event, lastEvent);
                   } catch (e) {
                      console.error(`#${lineNumber} EVENT ` + JSON.stringify(event));
                      console.error(`Failed processing event #${lineNumber}: ${e.stack}`);
                   }
                }
+               lastEvent = event;
             }
          });
 
@@ -66,7 +68,7 @@ module.exports = class Log {
       });
    }
 
-   processEvent(lineNumber, event) {
+   processEvent(lineNumber, event, lastEvent) {
       if (event.event === 'ENCOUNTER_START')
          this.report.encounters[event.encounterName] = (this.report.encounters[event.encounterName] || 0) + 1;
 
@@ -78,7 +80,7 @@ module.exports = class Log {
          console.log(`#${lineNumber} EVENT ` + JSON.stringify(event));
 
       if (this.customFunc)
-         this.customFunc.processEvent(this, this.options, lineNumber, event);
+         this.customFunc.processEvent(this, this.options, lineNumber, event, lastEvent);
    }
 
    initResult() {

@@ -21,7 +21,7 @@
 module.exports.schools = ['Physical', 'Holy', 'Holystrike', 'Fire',
                 'Flamestrike', 'Holyfire', '', 'Nature',
                 'Stormstrike', 'Holystorm', '', 'Firestorm',
-                '', '', '', 'Frost',
+                '', 'Physical', '', 'Frost',
                 'Froststrike', 'Holyfrost', '', 'Frostfire',
                 '', '', '', 'Froststorm',
                 '', '', '', 'Elemental',

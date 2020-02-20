@@ -30,6 +30,7 @@ program
    .option('--ignore-ver-err', 'Ignore combat log version errors')
    .option('--sum <field>', 'Aggregate one of: ' + Object.values(consts.fields).join(', '), collect, [])
    .option('--ext <extension>', 'Process only files with this extension')
+   .option('--params <param>', 'Extra parameters passed to custom function', collect, [])
    .action(async (logPath, options) => {
       const report = {
          files: 0,
