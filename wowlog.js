@@ -22,7 +22,7 @@ async function processFile(filename, options, report, func) {
 }
 
 program
-   .command('<log-path>', 'Path to log file')
+   .command('<log-path>', 'Path to log file or raw log line to parse')
    .option('-v, --verbose', 'Print detailed debug information')
    .option('--print', 'Print parsed events')
    .option('--func <functionName>', 'Print parsed events')
@@ -38,15 +38,23 @@ program
          encounters: {},
       };
       const func = options['func'] && require('./funcs/' + options['func']);
-      if (fs.lstatSync(logPath).isDirectory()) {
-         const files = fs.readdirSync(logPath);
-         for (let file of files) {
-            if (options['ext'] && !file.endsWith('.' + options['ext']))
-               continue;
-            await processFile(path.join(logPath, file), options, report, func);
-         }
-      } else
-         await processFile(logPath, options, report, func);
+      if (fs.existsSync(logPath)) {
+         if (fs.lstatSync(logPath).isDirectory()) {
+            const files = fs.readdirSync(logPath);
+            for (let file of files) {
+               if (options['ext'] && !file.endsWith('.' + options['ext']))
+                  continue;
+               await processFile(path.join(logPath, file), options, report, func);
+            }
+         } else
+            await processFile(logPath, options, report, func);
+      } else {
+         // try to parse logPath - should be a line from the combat log
+         const parser = require('./parser');
+         const event = parser.line(logPath, 9);
+         console.log(JSON.stringify(event, null, 4));
+         return;
+      }
 
       const took = moment().diff(moment(report.startTime), 'seconds');
       const encounters = Object.keys(report.encounters).map(key => [key, report.encounters[key]]).sort((a, b) => b[1] - a[1]);
